@@ -15,7 +15,7 @@ import fs from 'fs/promises';
 import MySQLStoreFactory from 'express-mysql-session';
 import bcrypt from 'bcrypt';
 import { getDbPool, ensureSchema } from './src/db.js';
-import { createUser, findUserByUsernameOrEmail, getUserById, listUsers, updateUser, deleteUserById, countUsers, approveUser } from './src/models/userModel.js';
+import { createUser, findUserByUsernameOrEmail, getUserById, listUsers, updateUser, deleteUserById, countUsers } from './src/models/userModel.js';
 import { logActivity, listActivitiesForUserOrAll } from './src/models/activityModel.js';
 import { createScheduledJob, listScheduledJobsForUser, getScheduledResults, updateScheduledResult, deleteAllScheduledResults, deleteScheduledJob, getPendingJobs, updateJobStatus, createScheduledResult } from './src/scheduler/scheduleModel.js';
 import { updateResolutionStats, getResolutionStats, resetResolutionStats } from './src/models/resolutionStatsModel.js';
@@ -736,8 +736,7 @@ app.post('/api/users', requireRole('Admin'), async (req, res) => {
     const id = await createUser({ name, username, email, passwordHash: hash, role });
     // If admin wants to auto-approve, update flag
     if (approved) {
-      await approveUser(id);
-      // await updateUser(id, { approved: 1 });
+      await updateUser(id, { approved: 1 });
     }
     try { await logActivity(req.session.user.id, 'USER_CREATE', { id, username, role }); } catch {}
     res.status(201).json({ id });

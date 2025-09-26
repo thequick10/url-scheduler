@@ -65,7 +65,8 @@ export async function updateUser(id, { name, username, email, role, passwordHash
   if (username !== undefined) { fields.push('username = ?'); params.push(username); }
   if (email !== undefined) { fields.push('email = ?'); params.push(email); }
   if (role !== undefined) { fields.push('role = ?'); params.push(role); }
-  if (Object.prototype.hasOwnProperty.call(arguments[1] || {}, 'approved')) { fields.push('approved = ?'); params.push(arguments[1].approved ? 1 : 0); }
+  // if (Object.prototype.hasOwnProperty.call(arguments[1] || {}, 'approved')) { fields.push('approved = ?'); params.push(arguments[1].approved ? 1 : 0); }
+  if (approved !== undefined) { fields.push('approved = ?'); params.push(approved ? 1 : 0); }
   if (passwordHash !== undefined) { fields.push('password_hash = ?'); params.push(passwordHash); }
   if (fields.length === 0) return;
   params.push(id);

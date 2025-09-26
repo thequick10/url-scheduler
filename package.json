@@ -24,7 +24,8 @@
     "os": "^0.1.2",
     "path": "^0.12.7",
     "puppeteer-core": "^24.11.2",
-    "url": "^0.11.4"
+    "url": "^0.11.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "node server.js",

@@ -1,6 +1,6 @@
 import { config as dotenv } from "dotenv";
 dotenv();
-
+import puppeteer from "puppeteer-core";
 import express from "express";
 import { resolveWithBrowserAPI } from './src/resolver.js';
 import path from "path";

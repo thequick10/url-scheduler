@@ -120,7 +120,7 @@ export async function resolveWithBrowserAPI(inputUrl, region = "US", uaType) {
         req.continue();
       }
     });
-
+    console.log(`[INFO] Resolving URL: [${inputUrl}] with region: [${region}]`);
     const { userAgent, isMobile } = getRandomUserAgent(uaType);
     console.log(`[INFO] Using ${isMobile ? 'Mobile' : 'Desktop'} User-Agent:\n${userAgent}`);
     await page.setUserAgent(userAgent);
@@ -175,6 +175,15 @@ export async function resolveWithBrowserAPI(inputUrl, region = "US", uaType) {
         return { error: "IP lookup failed" };
       }
     });
+
+    console.log(`[INFO] Final URL: [${finalUrl}]`);
+
+    console.log(`→ URLs Resolved with [${region}] Check IP Data ⤵`);
+    if (ipData?.ip) {
+        console.log(`🌍 IP Info : ${ipData.ip} (${ipData.country || "Unknown Country"} - ${ipData.region || "Unknown Region"} - ${ipData.country_code || "Unknown country_code"})`);
+        console.log(`🔍 Region Match: ${ipData.country_code?.toUpperCase() === region.toUpperCase() ? '✅ REGION MATCHED' : '❌ REGION MISMATCH'}`);
+    }
+
     return { finalUrl, ipData };
   } catch(err){
     console.log(`[ERROR] ${err.message}`);

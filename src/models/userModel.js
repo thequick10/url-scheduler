@@ -56,6 +56,11 @@ export async function countUsers({ q }) {
   const [rows] = await pool.query('SELECT COUNT(*) as c FROM users');
   return rows[0].c;
 }
+//User approve new function
+export async function approveUser(id) {
+  const pool = getDbPool();
+  await pool.query('UPDATE users SET approved = 1 WHERE id = ?', [id]);
+}
 
 export async function updateUser(id, { name, username, email, role, passwordHash }) {
   const pool = getDbPool();

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheduled Resolution Results</title>
+  <link rel="preload" href="../style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="stylesheet" href="../components/page-loader/loader.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    .table-controls label{
+      padding-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <div class="container">
+    <div class="header">
+      <h1>🕰 Scheduled Resolution Results</h1>
+      <p>Results from your scheduled bulk URL resolutions.</p>
+    </div>
+    <div class="table-section">
+      <div class="table-controls">
+        <label for="searchInput">Search Campaigns</label>
+        <input class="search-bar" id="searchInput" placeholder="🔍 Search results...">
+        <div class="filter-group">
+          <input type="text" id="dateRange" placeholder="📆 Filter by Date Range">
+          <button onclick="clearDateFilter()" class="clear-date-btn">❌ Clear Date Filter</button>
+        </div>
+        <select class="custom-select" id="sortDate">
+          <option value="newest">📅 Sort by Newest</option>
+          <option value="oldest">📅 Sort by Oldest</option>
+        </select>
+        <select class="custom-select" id="exportFormat">
+          <option value="csv">CSV</option>
+          <option value="xlsx">XLSX</option>
+        </select>
+        <button class="btn-secondary" id="exportButton">📊 Export</button>
+        <button id="deleteAllButton" class="btn-danger">🗑️ Delete All</button>
+      </div>
+
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th>Resolved At (IST)</th>
+            <th>Original URL</th>
+            <th>Final URL</th>
+            <th>Country</th>
+            <th>Notes</th>
+            <th>UA</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+        <tfoot>
+          <tr id="loadingRow" style="display: none">
+            <td colspan="8" style="text-align: center; font-style: italic">
+              <div class="loader">
+                <span class="loader-text">loading...</span>
+                <span class="load"></span>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  <script src="../components/page-loader/loader.js"></script>
+  <script src="../components/navbar/navbar.js" defer></script>
+  <script src="./scheduled-results.js"></script>
+</body>
+</html>

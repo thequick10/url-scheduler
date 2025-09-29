@@ -1,6 +1,18 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const scheduleForm = document.getElementById('schedule-form');
   const jobsTableBody = document.getElementById('jobs-table-body');
+
+  let userRole = '';
+  try {
+    const res = await fetch('/api/auth/me');
+    const { user } = await res.json();
+    userRole = user.role;
+    if (userRole === 'Admin') {
+      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'table-cell');
+    }
+  } catch (e) {
+    console.error('Could not fetch user role', e);
+  }
 
   // Function to convert UTC to IST
   function toIST(dateString) {
@@ -18,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
       jobsTableBody.innerHTML = jobs.map(job => `
         <tr>
           <td>${job.id}</td>
+          <td class="admin-only">${job.username}</td>
           <td>${job.file_name}</td>
           <td><span class="status status-${job.status}">${job.status}</span></td>
           <td>${toIST(job.scheduled_at)}</td>
@@ -27,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `).join('');
     } catch (error) {
       console.error('Error loading jobs:', error);
-      jobsTableBody.innerHTML = '<tr><td colspan="5">Error loading jobs.</td></tr>';
+      jobsTableBody.innerHTML = `<tr><td colspan="${userRole === 'Admin' ? '7' : '6'}">Error loading jobs.</td></tr>`;
     }
   }
 

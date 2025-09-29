@@ -74,12 +74,23 @@ export async function createScheduledResult({ jobId, originalUrl, finalUrl, coun
  * @param {number} details.userId - The ID of the user.
  * @returns {Promise<Array<object>>} A list of jobs.
  */
-export async function listScheduledJobsForUser({ userId }) {
+export async function listScheduledJobs({ userId } = {}) {
   const pool = getDbPool();
-  const [rows] = await pool.query(
-    'SELECT id, file_name, status, scheduled_at, created_at FROM scheduled_jobs WHERE user_id = ? ORDER BY created_at DESC',
-    [userId]
-  );
+  let query = `
+    SELECT j.id, j.file_name, j.status, j.scheduled_at, j.created_at, u.username 
+    FROM scheduled_jobs j
+    JOIN users u ON j.user_id = u.id
+  `;
+  const params = [];
+
+  if (userId) {
+    query += ' WHERE j.user_id = ?';
+    params.push(userId);
+  }
+
+  query += ' ORDER BY j.created_at DESC';
+
+  const [rows] = await pool.query(query, params);
   return rows;
 }
 
@@ -90,16 +101,24 @@ export async function listScheduledJobsForUser({ userId }) {
  * @param {number} details.userId - The ID of the user.
  * @returns {Promise<Array<object>>} A list of results.
  */
-export async function getScheduledResults({ userId }) {
+export async function getScheduledResults({ userId } = {}) {
   const pool = getDbPool();
-  const [rows] = await pool.query(
-    `SELECT r.* 
-     FROM scheduled_results r
-     JOIN scheduled_jobs j ON r.job_id = j.id
-     WHERE j.user_id = ? 
-     ORDER BY r.resolved_at DESC`,
-    [userId]
-  );
+  let query = `
+    SELECT r.*, u.username
+    FROM scheduled_results r
+    JOIN scheduled_jobs j ON r.job_id = j.id
+    JOIN users u ON j.user_id = u.id
+  `;
+  const params = [];
+
+  if (userId) {
+    query += ' WHERE j.user_id = ?';
+    params.push(userId);
+  }
+
+  query += ' ORDER BY r.resolved_at DESC';
+
+  const [rows] = await pool.query(query, params);
   return rows;
 }
 

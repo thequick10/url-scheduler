@@ -1,6 +1,6 @@
 import { config as dotenv } from "dotenv";
 dotenv();
-import puppeteer from "puppeteer-core";
+
 import express from "express";
 import { resolveWithBrowserAPI } from './src/resolver.js';
 import path from "path";
@@ -15,13 +15,14 @@ import fs from 'fs/promises';
 import MySQLStoreFactory from 'express-mysql-session';
 import bcrypt from 'bcrypt';
 import { getDbPool, ensureSchema } from './src/db.js';
-import { createUser, findUserByUsernameOrEmail, getUserById, listUsers, updateUser, deleteUserById, countUsers } from './src/models/userModel.js';
+import { createUser, findUserByUsernameOrEmail, getUserById, listUsers, updateUser, deleteUserById, countUsers, approveUser } from './src/models/userModel.js';
 import { logActivity, listActivitiesForUserOrAll } from './src/models/activityModel.js';
-import { createScheduledJob, listScheduledJobsForUser, getScheduledResults, updateScheduledResult, deleteAllScheduledResults, deleteScheduledJob, getPendingJobs, updateJobStatus, createScheduledResult } from './src/scheduler/scheduleModel.js';
+import { createScheduledJob, listScheduledJobs, getScheduledResults, updateScheduledResult, deleteAllScheduledResults, deleteScheduledJob, getPendingJobs, updateJobStatus, createScheduledResult } from './src/scheduler/scheduleModel.js';
 import { updateResolutionStats, getResolutionStats, resetResolutionStats } from './src/models/resolutionStatsModel.js';
 import multer from 'multer';
 import csv from 'csv-parser';
 import xlsx from 'xlsx';
+import puppeteer from 'puppeteer-core';
 
 dotenv();
 
@@ -736,7 +737,7 @@ app.post('/api/users', requireRole('Admin'), async (req, res) => {
     const id = await createUser({ name, username, email, passwordHash: hash, role });
     // If admin wants to auto-approve, update flag
     if (approved) {
-      await updateUser(id, { approved: 1 });
+      await approveUser(id);
     }
     try { await logActivity(req.session.user.id, 'USER_CREATE', { id, username, role }); } catch {}
     res.status(201).json({ id });
@@ -881,7 +882,9 @@ app.post('/api/schedule', requireAuth, upload.single('scheduleFile'), async (req
 
 app.get('/api/schedules', requireAuth, async (req, res) => {
   try {
-    const jobs = await listScheduledJobsForUser({ userId: req.session.user.id });
+    const jobs = req.session.user.role === 'Admin'
+      ? await listScheduledJobs()
+      : await listScheduledJobs({ userId: req.session.user.id });
     res.json(jobs);
   } catch (e) {
     console.error('Error fetching schedules:', e);
@@ -891,7 +894,9 @@ app.get('/api/schedules', requireAuth, async (req, res) => {
 
 app.get('/api/scheduled-results', requireAuth, async (req, res) => {
   try {
-    const results = await getScheduledResults({ userId: req.session.user.id });
+    const results = req.session.user.role === 'Admin'
+      ? await getScheduledResults()
+      : await getScheduledResults({ userId: req.session.user.id });
     res.json(results);
   } catch (e) {
     console.error('Error fetching scheduled results:', e);
@@ -961,17 +966,18 @@ app.get('/puppeteer-status', requireAuth, async (req, res) => {
   }
 });
 
-
 // Keep Render service awake by pinging itself every 14 minutes
-setInterval(() => {
-  const url = 'https://thequick10scheduler.onrender.com/'; // Replace with your actual Render URL
+if (process.env.RENDER_EXTERNAL_URL) {
+  setInterval(() => {
+    const url = process.env.RENDER_EXTERNAL_URL;
 
-  https.get(url, (res) => {
-    console.log(`[KEEP-AWAKE] Pinged self. Status code: ${res.statusCode}`);
-  }).on('error', (err) => {
-    console.error('[KEEP-AWAKE] Self-ping error:', err.message);
-  });
-}, 14 * 60 * 1000); // every 14 minutes
+    https.get(url, (res) => {
+      console.log(`[KEEP-AWAKE] Pinged self. Status code: ${res.statusCode}`);
+    }).on('error', (err) => {
+      console.error('[KEEP-AWAKE] Self-ping error:', err.message);
+    });
+  }, 14 * 60 * 1000); // every 14 minutes
+}
 
 const POLLING_INTERVAL = 10000; // 10 seconds
 

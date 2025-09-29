@@ -14,6 +14,9 @@
     .table-controls label{
       padding-top: 20px;
     }
+    .admin-only {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -47,6 +50,7 @@
       <table id="resultsTable">
         <thead>
           <tr>
+            <th class="admin-only">Scheduled Job by</th>
             <th>Resolved At (IST)</th>
             <th>Original URL</th>
             <th>Final URL</th>
@@ -60,7 +64,7 @@
         <tbody id="tableBody"></tbody>
         <tfoot>
           <tr id="loadingRow" style="display: none">
-            <td colspan="8" style="text-align: center; font-style: italic">
+            <td colspan="9" style="text-align: center; font-style: italic">
               <div class="loader">
                 <span class="loader-text">loading...</span>
                 <span class="load"></span>

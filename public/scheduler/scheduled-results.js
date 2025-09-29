@@ -1,4 +1,6 @@
 let results = [];
+let userRole = '';
+let fp; // flatpickr instance
 
 // Function to convert UTC to IST
 function toIST(dateString) {
@@ -15,7 +17,7 @@ async function loadResults() {
     renderTable();
   } catch (error) {
     console.error('Error loading results:', error);
-    document.getElementById('tableBody').innerHTML = '<tr><td colspan="8">Error loading results.</td></tr>';
+    document.getElementById('tableBody').innerHTML = `<tr><td colspan="${userRole === 'Admin' ? '9' : '8'}">Error loading results.</td></tr>`;
   }
 }
 
@@ -25,6 +27,7 @@ function renderTable() {
 
   tableBody.innerHTML = filteredResults.map(result => `
     <tr data-result-id="${result.id}">
+      ${userRole === 'Admin' ? `<td class="admin-only">${result.username}</td>` : ''}
       <td>${toIST(result.resolved_at)}</td>
       <td>${result.original_url}</td>
       <td>${result.final_url === 'Loading...' ? '<span class="status-badge status-loading"><span class="loading-spinner"></span>Loading...</span>' : (result.final_url || 'N/A')}</td>
@@ -93,16 +96,15 @@ function renderTable() {
 
 function filterAndSortResults() {
   const searchInput = document.getElementById('searchInput');
-  const dateRangePicker = document.getElementById('dateRange');
   const sortSelect = document.getElementById('sortDate');
 
   let filtered = [...results];
-  const fp = flatpickr(dateRangePicker);
   const selectedDates = fp.selectedDates;
 
   // Date range filter
   if (selectedDates.length === 2) {
     const [start, end] = selectedDates;
+    end.setHours(23, 59, 59, 999); // Make sure the end date is inclusive
     filtered = filtered.filter(r => {
       const resolvedDate = new Date(r.resolved_at);
       return resolvedDate >= start && resolvedDate <= end;
@@ -188,9 +190,9 @@ async function resolveFinalUrl(inputUrl, region = "US", uaType = "random") {
 function exportCSV() {
   const filteredResults = filterAndSortResults(); // Use filtered and sorted data
 
-  let csv = "Resolved At (IST),Original URL,Final URL,Country,Notes,UA Type,Status\n";
+  let csv = (userRole === 'Admin' ? "Scheduled Job by," : "") + "Resolved At (IST),Original URL,Final URL,Country,Notes,UA Type,Status\n";
   filteredResults.forEach((r) => {
-    csv += `"${toIST(r.resolved_at)}","${r.original_url}","${r.final_url || ''}","${r.country || ''}","${r.notes || ''}","${r.uaType || ''}","${r.status}"\n`;
+    csv += `${userRole === 'Admin' ? `"${r.username}",` : ''}"${toIST(r.resolved_at)}","${r.original_url}","${r.final_url || ''}","${r.country || ''}","${r.notes || ''}","${r.uaType || ''}","${r.status}"\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -212,15 +214,20 @@ function exportCSV() {
 function exportXLSX() {
   const filteredResults = filterAndSortResults(); // Use filtered and sorted data
 
-  const dataForSheet = filteredResults.map(r => ({
-    "Resolved At (IST)": toIST(r.resolved_at),
-    "Original URL": r.original_url,
-    "Final URL": r.final_url || '',
-    "Country": r.country || '',
-    "Notes": r.notes || '',
-    "UA Type": r.uaType || '',
-    "Status": r.status
-  }));
+  const dataForSheet = filteredResults.map(r => {
+    const row = {};
+    if (userRole === 'Admin') {
+      row["Scheduled Job by"] = r.username;
+    }
+    row["Resolved At (IST)"] = toIST(r.resolved_at);
+    row["Original URL"] = r.original_url;
+    row["Final URL"] = r.final_url || '';
+    row["Country"] = r.country || '';
+    row["Notes"] = r.notes || '';
+    row["UA Type"] = r.uaType || '';
+    row["Status"] = r.status;
+    return row;
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
   const workbook = XLSX.utils.book_new();
@@ -244,13 +251,24 @@ function exportXLSX() {
   URL.revokeObjectURL(url);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const searchInput = document.getElementById('searchInput');
   const dateRangePicker = document.getElementById('dateRange');
   const sortSelect = document.getElementById('sortDate');
   const exportButton = document.getElementById('exportButton');
   const clearDateFilterButton = document.querySelector('.clear-date-btn');
   const tableBody = document.getElementById('tableBody');
+
+  try {
+    const res = await fetch('/api/auth/me');
+    const { user } = await res.json();
+    userRole = user.role;
+    if (userRole === 'Admin') {
+      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'table-cell');
+    }
+  } catch (e) {
+    console.error('Could not fetch user role', e);
+  }
 
   // Delete Eventlistner
   const deleteAllButton = document.getElementById('deleteAllButton');
@@ -263,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
   clearDateFilterButton.addEventListener('click', clearDateFilter);
 
   // Flatpickr for date range
-  const fp = flatpickr(dateRangePicker, {
+  fp = flatpickr(dateRangePicker, {
     mode: "range",
     dateFormat: "Y-m-d",
     onChange: function(selectedDates) {
@@ -337,8 +355,6 @@ function handleExport() {
 }
 
 function clearDateFilter() {
-  const dateRangePicker = document.getElementById('dateRange');
-  const fp = flatpickr(dateRangePicker);
   fp.clear();
   renderTable();
 }

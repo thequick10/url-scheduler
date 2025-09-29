@@ -22,6 +22,9 @@
       flex-direction: column;
       padding-bottom: 20px;
     }
+    .admin-only {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -51,6 +54,7 @@
           <thead>
             <tr>
               <th>ID</th>
+              <th class="admin-only">Scheduled Job by</th>
               <th>File Name</th>
               <th>Status</th>
               <th>Scheduled At (IST)</th>

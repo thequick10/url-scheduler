@@ -27,7 +27,7 @@ function renderTable() {
 
   tableBody.innerHTML = filteredResults.map(result => `
     <tr data-result-id="${result.id}">
-      ${userRole === 'Admin' ? `<td class="admin-only">${result.username}</td>` : ''}
+      <td class="admin-only">${result.username}</td>
       <td>${toIST(result.resolved_at)}</td>
       <td>${result.original_url}</td>
       <td>${result.final_url === 'Loading...' ? '<span class="status-badge status-loading"><span class="loading-spinner"></span>Loading...</span>' : (result.final_url || 'N/A')}</td>
@@ -190,9 +190,27 @@ async function resolveFinalUrl(inputUrl, region = "US", uaType = "random") {
 function exportCSV() {
   const filteredResults = filterAndSortResults(); // Use filtered and sorted data
 
-  let csv = (userRole === 'Admin' ? "Scheduled Job by," : "") + "Resolved At (IST),Original URL,Final URL,Country,Notes,UA Type,Status\n";
+  const headers = ["Resolved At (IST)", "Original URL", "Final URL", "Country", "Notes", "UA Type", "Status"];
+  if (userRole === 'Admin') {
+    headers.unshift("Scheduled Job by");
+  }
+
+  let csv = headers.join(',') + '\n';
+
   filteredResults.forEach((r) => {
-    csv += `${userRole === 'Admin' ? `"${r.username}",` : ''}"${toIST(r.resolved_at)}","${r.original_url}","${r.final_url || ''}","${r.country || ''}","${r.notes || ''}","${r.uaType || ''}","${r.status}"\n`;
+    const row = [
+      toIST(r.resolved_at),
+      r.original_url,
+      r.final_url || '',
+      r.country || '',
+      r.notes || '',
+      r.uaType || '',
+      r.status
+    ];
+    if (userRole === 'Admin') {
+      row.unshift(r.username);
+    }
+    csv += row.map(val => `"${val}"`).join(',') + '\n';
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

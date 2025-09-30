@@ -76,6 +76,18 @@ setTimeout(() => {
 
 // Initialize DB schema and session store
 await ensureSchema();
+
+// Keep the database connection alive
+setInterval(async () => {
+  try {
+    const pool = getDbPool();
+    await pool.query('SELECT 1');
+    console.log('[DB] Keep-alive ping sent.');
+  } catch (e) {
+    console.error('[DB] Keep-alive ping failed:', e);
+  }
+}, 14 * 60 * 1000); // every 14 minutes
+
 const pool = getDbPool(); // Get the pool
 const MySQLStore = MySQLStoreFactory(session);
 const sessionStore = new MySQLStore({

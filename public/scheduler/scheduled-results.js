@@ -14,6 +14,7 @@ async function loadResults() {
     const res = await fetch('/api/scheduled-results', { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch results');
     results = await res.json();
+    console.log('Results data:', results);
     renderTable();
   } catch (error) {
     console.error('Error loading results:', error);
@@ -124,6 +125,9 @@ function filterAndSortResults() {
   // Sort
   const sortOrder = sortSelect.value;
   filtered.sort((a, b) => {
+    if (sortOrder === 'oldest') {
+      return a.id - b.id;
+    }
     const dateA = new Date(a.resolved_at);
     const dateB = new Date(b.resolved_at);
     return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
@@ -282,7 +286,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { user } = await res.json();
     userRole = user.role;
     if (userRole === 'Admin') {
-      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'table-cell');
+      document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = 'table-cell';
+        console.log('scheduled-results.js: admin-only element style set to table-cell');
+      });
     }
   } catch (e) {
     console.error('Could not fetch user role', e);

@@ -12,11 +12,22 @@ export function getDbPool() {
       password: process.env.MYSQL_PASSWORD,
       database: process.env.MYSQL_DB,
       waitForConnections: true,
-      connectionLimit: 5,
+      connectionLimit: 12,
+      connectTimeout: 20000,
       timezone: 'Z' // store UTC
     });
   }
   return pool;
+}
+
+// Optional: Reset pool if connection is lost
+function handlePoolError(err) {
+  if (err && err.code === 'PROTOCOL_CONNECTION_LOST') {
+    console.warn('[DB] Connection lost. Recreating pool...');
+    pool = null;
+    getDbPool();
+    console.log('[DB] Pool recreated.');
+  }
 }
 
 export async function ensureSchema() {
@@ -47,6 +58,10 @@ export async function ensureSchema() {
     }
   } catch (e) {
     // ignore if not permitted; startup will continue
+    if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+      handlePoolError(err);
+      console.log('[ensureSchema] Pool recreated.');
+    }
   }
 
   // Ensure all Admin users are approved (for existing deployments)
@@ -54,6 +69,10 @@ export async function ensureSchema() {
     await pool.query(`UPDATE users SET approved = 1 WHERE role = 'Admin' AND approved = 0`);
   } catch (e) {
     // ignore
+    if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+      handlePoolError(err);
+      console.log('[ensureSchema] Pool recreated.');
+    }
   }
 
   await pool.query(`

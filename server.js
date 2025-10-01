@@ -1114,7 +1114,7 @@ async function processJob(job) {
   }
 }
 
-async function startWorker() {
+async function startWorker(handlePoolError) {
   console.log('Starting background worker...');
   while (true) {
     try {

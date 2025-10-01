@@ -32,7 +32,7 @@ export function getDbPool() {
 }
 
 // Optional: Reset pool if connection is lost
-export async function handlePoolError(err) {
+export function handlePoolError(err) {
   if (err && err.code === 'PROTOCOL_CONNECTION_LOST') {
     console.warn('[DB] Connection lost. Recreating pool...');
     pool = null;

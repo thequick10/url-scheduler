@@ -1142,5 +1142,6 @@ async function startWorker() {
 
 app.listen(PORT, () => {
   console.log(`🚀 Region-aware resolver running at http://localhost:${PORT}`);
-  startWorker();
+  // startWorker();
+  startWorker(handlePoolError);
 });

@@ -1122,7 +1122,12 @@ async function startWorker() {
       if (pendingJobs.length > 0) {
         console.log(`Found ${pendingJobs.length} pending jobs.`);
         // Process one job at a time to avoid overwhelming the system
-        await processJob(pendingJobs[0]);
+        // await processJob(pendingJobs[0]);
+        try {
+          await processJob(pendingJobs[0]); // also wrap inside!
+        } catch (e) {
+          console.error(`[Worker] Failed to process job ${job.id}:`, e);
+        }
       } else {
         // console.log('No pending jobs found. Waiting...');
       }

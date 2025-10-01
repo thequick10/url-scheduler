@@ -30,14 +30,30 @@ export async function createScheduledJob({ userId, fileName, mimeType, fileConte
  *
  * @returns {Promise<Array<object>>} A list of pending jobs.
  */
+// export async function getPendingJobs() {
+//   const pool = getDbPool();
+//   const connection = await pool.getConnection();
+//   try {
+//     const [rows] = await connection.query('SELECT * FROM scheduled_jobs WHERE status = \'pending\' AND scheduled_at <= NOW() ORDER BY scheduled_at ASC');
+//     return rows;
+//   } finally {
+//     connection.release();
+//   }
+// }
 export async function getPendingJobs() {
-  const pool = getDbPool();
-  const connection = await pool.getConnection();
   try {
-    const [rows] = await connection.query('SELECT * FROM scheduled_jobs WHERE status = \'pending\' AND scheduled_at <= NOW() ORDER BY scheduled_at ASC');
-    return rows;
-  } finally {
-    connection.release();
+    const pool = getDbPool();
+    const connection = await pool.getConnection();
+    try {
+      const [rows] = await connection.query('SELECT * FROM scheduled_jobs WHERE status = \'pending\' AND scheduled_at <= NOW() ORDER BY scheduled_at ASC');
+      return rows;
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error('[getPendingJobs] Query error:', err);
+    handlePoolError(err); // resets pool if connection lost
+    return []; // return empty to avoid breaking worker
   }
 }
 

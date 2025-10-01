@@ -3,19 +3,30 @@ import dotenv from 'dotenv';
 dotenv.config();
 let pool;
 
+function createPool() {
+  const newPool = mysql.createPool({
+    host: process.env.MYSQL_HOST,
+    port: Number(process.env.MYSQL_PORT || 3306),
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DB,
+    waitForConnections: true,
+    connectionLimit: 10,
+    connectTimeout: 20000,
+    timezone: 'Z' // store UTC
+  });
+
+  newPool.on('error', (err) => {
+    console.error('[DB] Pool error:', err);
+    handlePoolError(err);
+  });
+
+  return newPool;
+}
+
 export function getDbPool() {
   if (!pool) {
-    pool = mysql.createPool({
-      host: process.env.MYSQL_HOST,
-      port: Number(process.env.MYSQL_PORT || 3306),
-      user: process.env.MYSQL_USER,
-      password: process.env.MYSQL_PASSWORD,
-      database: process.env.MYSQL_DB,
-      waitForConnections: true,
-      connectionLimit: 12,
-      connectTimeout: 20000,
-      timezone: 'Z' // store UTC
-    });
+    pool = createPool();
   }
   return pool;
 }

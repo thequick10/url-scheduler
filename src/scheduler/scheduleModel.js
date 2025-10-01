@@ -41,50 +41,38 @@ export async function createScheduledJob({ userId, fileName, mimeType, fileConte
 //   }
 // }
 export async function getPendingJobs() {
+  const pool = getDbPool();
+
   const maxRetries = 3;
-  let retryCount = 0;
-  
-  while (retryCount < maxRetries) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const pool = getDbPool();
-      const connection = await pool.getConnection();
-      
-      try {
-        // Test connection before query
-        await connection.ping();
-        
-        const [rows] = await connection.query(
-          'SELECT * FROM scheduled_jobs WHERE status = \'pending\' AND scheduled_at <= NOW() ORDER BY scheduled_at ASC'
-        );
-        return rows;
-      } finally {
-        connection.release();
-      }
+      // Use pool.query so the driver hands out a fresh working connection
+      const [rows] = await pool.query(
+        "SELECT * FROM scheduled_jobs WHERE status = 'pending' AND scheduled_at <= NOW() ORDER BY scheduled_at ASC"
+      );
+      return rows;
     } catch (err) {
-      retryCount++;
-      console.error(`[getPendingJobs] Attempt ${retryCount} failed:`, err.message);
-      
-      if (err.code === 'PROTOCOL_CONNECTION_LOST' || 
-          err.code === 'ECONNRESET' || 
-          err.code === 'ETIMEDOUT') {
-        
-        // Handle connection errors
+      console.error(`[getPendingJobs] Attempt ${attempt} failed:`, err?.code || err?.message);
+
+      const transient = new Set([
+        'PROTOCOL_CONNECTION_LOST',
+        'ECONNRESET',
+        'ETIMEDOUT'
+      ]);
+      if (transient.has(err?.code) && attempt < maxRetries) {
         handlePoolError(err);
-        
-        if (retryCount < maxRetries) {
-          console.log(`[getPendingJobs] Retrying in ${retryCount * 1000}ms...`);
-          await new Promise(resolve => setTimeout(resolve, retryCount * 1000));
-          continue;
-        }
+        const delayMs = attempt * 500;
+        await new Promise(r => setTimeout(r, delayMs));
+        continue;
       }
-      
-      // For non-connection errors or max retries reached
-      console.error('[getPendingJobs] Max retries reached or non-recoverable error:', err);
-      return []; // Return empty to avoid breaking worker
+
+      // Non-recoverable or out of retries
+      handlePoolError(err);
+      return [];
     }
   }
-  
-  return []; // Fallback
+
+  return [];
 }
 
 /**

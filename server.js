@@ -86,7 +86,7 @@ setInterval(async () => {
   } catch (e) {
     console.error('[DB] Keep-alive ping failed:', e);
   }
-}, 14 * 60 * 1000); // every 14 minutes
+}, 5 * 60 * 1000); // every 14 minutes
 
 const pool = getDbPool(); // Get the pool
 const MySQLStore = MySQLStoreFactory(session);

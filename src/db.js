@@ -12,19 +12,11 @@ function createPool() {
     database: process.env.MYSQL_DB,
     waitForConnections: true,
     connectionLimit: 10,
+    queueLimit: 0,
     connectTimeout: 20000,
-    acquireTimeout: 20000,
-    timeout: 20000,
-    timezone: 'Z',
-    // Add these new configurations
-    reconnect: true,
-    keepAliveInitialDelay: 0,
     enableKeepAlive: true,
-    // Connection validation
-    validateConnection: true,
-    // Retry configuration
-    retryDelay: 200,
-    maxReconnects: 3
+    keepAliveInitialDelay: 0,
+    timezone: 'Z'
   });
 
   newPool.on('error', (err) => {
@@ -42,14 +34,16 @@ export function getDbPool() {
   return pool;
 }
 
+// Broaden recoverable conditions
 export function handlePoolError(err) {
-  if (err && (
-    err.code === 'PROTOCOL_CONNECTION_LOST' ||
-    err.code === 'ECONNRESET' ||
-    err.code === 'ETIMEDOUT' ||
-    err.code === 'ENOTFOUND'
-  )) {
-    console.warn('[DB] Connection lost. Recreating pool...', err.code);
+  if (!err) return;
+  const recoverable = new Set([
+    'PROTOCOL_CONNECTION_LOST',
+    'ECONNRESET',
+    'ETIMEDOUT'
+  ]);
+  if (recoverable.has(err.code)) {
+    console.warn('[DB] Connection issue detected, recreating pool...', err.code);
     pool = null;
     getDbPool();
     console.log('[DB] Pool recreated.');

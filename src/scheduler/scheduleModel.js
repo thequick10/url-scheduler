@@ -41,20 +41,50 @@ export async function createScheduledJob({ userId, fileName, mimeType, fileConte
 //   }
 // }
 export async function getPendingJobs() {
-  try {
-    const pool = getDbPool();
-    const connection = await pool.getConnection();
+  const maxRetries = 3;
+  let retryCount = 0;
+  
+  while (retryCount < maxRetries) {
     try {
-      const [rows] = await connection.query('SELECT * FROM scheduled_jobs WHERE status = \'pending\' AND scheduled_at <= NOW() ORDER BY scheduled_at ASC');
-      return rows;
-    } finally {
-      connection.release();
+      const pool = getDbPool();
+      const connection = await pool.getConnection();
+      
+      try {
+        // Test connection before query
+        await connection.ping();
+        
+        const [rows] = await connection.query(
+          'SELECT * FROM scheduled_jobs WHERE status = \'pending\' AND scheduled_at <= NOW() ORDER BY scheduled_at ASC'
+        );
+        return rows;
+      } finally {
+        connection.release();
+      }
+    } catch (err) {
+      retryCount++;
+      console.error(`[getPendingJobs] Attempt ${retryCount} failed:`, err.message);
+      
+      if (err.code === 'PROTOCOL_CONNECTION_LOST' || 
+          err.code === 'ECONNRESET' || 
+          err.code === 'ETIMEDOUT') {
+        
+        // Handle connection errors
+        handlePoolError(err);
+        
+        if (retryCount < maxRetries) {
+          console.log(`[getPendingJobs] Retrying in ${retryCount * 1000}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryCount * 1000));
+          continue;
+        }
+      }
+      
+      // For non-connection errors or max retries reached
+      console.error('[getPendingJobs] Max retries reached or non-recoverable error:', err);
+      return []; // Return empty to avoid breaking worker
     }
-  } catch (err) {
-    console.error('[getPendingJobs] Query error:', err);
-    handlePoolError(err); // resets pool if connection lost
-    return []; // return empty to avoid breaking worker
   }
+  
+  return []; // Fallback
 }
 
 /**

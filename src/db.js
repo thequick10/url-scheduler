@@ -13,7 +13,18 @@ function createPool() {
     waitForConnections: true,
     connectionLimit: 10,
     connectTimeout: 20000,
-    timezone: 'Z' // store UTC
+    acquireTimeout: 20000,
+    timeout: 20000,
+    timezone: 'Z',
+    // Add these new configurations
+    reconnect: true,
+    keepAliveInitialDelay: 0,
+    enableKeepAlive: true,
+    // Connection validation
+    validateConnection: true,
+    // Retry configuration
+    retryDelay: 200,
+    maxReconnects: 3
   });
 
   newPool.on('error', (err) => {
@@ -31,13 +42,32 @@ export function getDbPool() {
   return pool;
 }
 
-// Optional: Reset pool if connection is lost
 export function handlePoolError(err) {
-  if (err && err.code === 'PROTOCOL_CONNECTION_LOST') {
-    console.warn('[DB] Connection lost. Recreating pool...');
+  if (err && (
+    err.code === 'PROTOCOL_CONNECTION_LOST' ||
+    err.code === 'ECONNRESET' ||
+    err.code === 'ETIMEDOUT' ||
+    err.code === 'ENOTFOUND'
+  )) {
+    console.warn('[DB] Connection lost. Recreating pool...', err.code);
     pool = null;
     getDbPool();
     console.log('[DB] Pool recreated.');
+  }
+}
+
+// Add connection health check
+export async function checkConnectionHealth() {
+  try {
+    const pool = getDbPool();
+    const connection = await pool.getConnection();
+    await connection.ping();
+    connection.release();
+    return true;
+  } catch (err) {
+    console.error('[DB] Health check failed:', err);
+    handlePoolError(err);
+    return false;
   }
 }
 

@@ -14,7 +14,7 @@ import session from 'express-session';
 import fs from 'fs/promises';
 import MySQLStoreFactory from 'express-mysql-session';
 import bcrypt from 'bcrypt';
-import { getDbPool, ensureSchema } from './src/db.js';
+import { getDbPool, ensureSchema, handlePoolError } from './src/db.js';
 import { createUser, findUserByUsernameOrEmail, getUserById, listUsers, updateUser, deleteUserById, countUsers, approveUser } from './src/models/userModel.js';
 import { logActivity, listActivitiesForUserOrAll } from './src/models/activityModel.js';
 import { createScheduledJob, listScheduledJobs, getScheduledResults, updateScheduledResult, deleteAllScheduledResults, deleteScheduledJob, getPendingJobs, updateJobStatus, createScheduledResult } from './src/scheduler/scheduleModel.js';
@@ -1127,12 +1127,14 @@ async function startWorker() {
           await processJob(pendingJobs[0]); // also wrap inside!
         } catch (e) {
           console.error(`[Worker] Failed to process job ${job.id}:`, e);
+          handlePoolError(e);
         }
       } else {
         // console.log('No pending jobs found. Waiting...');
       }
     } catch (e) {
       console.error('Error in worker loop:', e);
+      handlePoolError(e);
     }
     await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
   }

@@ -1,4 +1,4 @@
-import { getDbPool } from '../db.js';
+import { getDbPool, handlePoolError } from '../db.js';
 
 /**
  * Creates a new scheduled job in the database.

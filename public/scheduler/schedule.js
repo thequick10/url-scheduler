@@ -26,7 +26,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch('/api/schedules', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch jobs');
       const jobs = await res.json();
-
+      console.log('Jobs data:', jobs);
+      
+      if (!Array.isArray(jobs) || jobs.length === 0) {
+        jobsTableBody.innerHTML = `<tr>
+          <td colspan="${userRole === 'Admin' ? '7' : '6'}" style="text-align:center; padding:16px; color:#666;">
+            No scheduled jobs yet.
+          </td>
+        </tr>`;
+        return;
+      }
+      
       jobsTableBody.innerHTML = jobs.map(job => `
         <tr>
           <td>${job.id}</td>

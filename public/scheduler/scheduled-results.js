@@ -26,6 +26,16 @@ function renderTable() {
   const tableBody = document.getElementById('tableBody');
   const filteredResults = filterAndSortResults();
 
+  if (!Array.isArray(filteredResults) || filteredResults.length === 0) {
+    const colspan = (userRole === 'Admin') ? 9 : 8;
+    tableBody.innerHTML = `<tr>
+      <td colspan="${colspan}" style="text-align:center; padding:16px; color:#666;">
+        No scheduled results to display.
+      </td>
+    </tr>`;
+    return;
+  }
+
   tableBody.innerHTML = filteredResults.map(result => `
     <tr data-result-id="${result.id}">
       <td class="admin-only">${result.username}</td>
@@ -89,7 +99,8 @@ function renderTable() {
       <td>${result.uaType || 'N/A'}</td>
       <td><span class="status status-${result.status}">${result.status}</span></td>
       <td>
-        <button class="btn-secondary refresh-button" data-result-id="${result.id}">Refresh</button>
+        <button class="refresh-button" data-result-id="${result.id}">Refresh URL</button>
+        <button class="copy-final-button" data-result-id="${result.id}" style="margin-top:6px;">Copy URL</button>
       </td>
     </tr>
   `).join('');
@@ -322,6 +333,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Event delegation to copy the final url 
+  tableBody.addEventListener('click', async (event) => {
+    if (event.target.classList.contains('copy-final-button')) {
+      const resultId = event.target.dataset.resultId;
+      copyFinalUrl(resultId);
+    }
+  });
+
   tableBody.addEventListener('change', (event) => {
     if (event.target.classList.contains('country-input')) {
       const resultId = event.target.dataset.resultId;
@@ -382,4 +401,36 @@ function handleExport() {
 function clearDateFilter() {
   fp.clear();
   renderTable();
+}
+
+// Copy final url button function
+function copyFinalUrl(resultId) {
+  const r = results.find(x => x.id === Number(resultId));
+  const value = r?.final_url?.toString().trim();
+
+  if (!value || value === 'Loading...' || value === 'Error resolving') {
+    alert('No valid final URL to copy.');
+    return;
+  }
+
+  // Use Clipboard API with simple fallback
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(value)
+      .then(() => alert('Final URL copied!'))
+      .catch(() => fallbackCopy(value));
+  } else {
+    fallbackCopy(value);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); alert('Final URL copied!'); }
+  catch { alert('Failed to copy.'); }
+  finally { document.body.removeChild(ta); }
 }

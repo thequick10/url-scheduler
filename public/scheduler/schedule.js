@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <td><span class="status status-${job.status}">${job.status}</span></td>
           <td>${toIST(job.scheduled_at)}</td>
           <td>${toIST(job.created_at)}</td>
-          <td><button class="btn-danger delete-job-button" data-job-id="${job.id}">🗑️ Delete</button></td>
+          <td><button class="btn-danger delete-job-button" data-job-id="${job.id}">🗑</button></td>
         </tr>
       `).join('');
     } catch (error) {

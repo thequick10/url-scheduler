@@ -41,7 +41,7 @@ function renderTable() {
       <td class="admin-only">${result.username}</td>
       <td>${toIST(result.resolved_at)}</td>
       <td>${result.original_url}</td>
-      <td>${result.final_url === 'Loading...' ? '<span class="status-badge status-loading"><span class="loading-spinner"></span>Loading...</span>' : (result.final_url || 'N/A')}</td>
+      <td>${result.final_url === 'Loading...' ? '<span class="status-badge status-loading"><span class="loading-spinner"></span>Loading...</span>' : (result.final_url || 'Error Resolving! Please Refresh')}</td>
       <td>
         <select class="country-input" data-result-id="${result.id}">
           <option value="US" ${result.country === 'US' ? 'selected' : ''}>🇺🇸 US</option>
@@ -95,8 +95,8 @@ function renderTable() {
           <!-- Add all other countries as needed -->
         </select>
       </td>
-      <td>${result.notes || ''}</td>
-      <td>${result.uaType || 'N/A'}</td>
+      <td>${result.notes || 'Not Found'}</td>
+      <td>${result.uaType || 'uAType Not Found'}</td>
       <td><span class="status status-${result.status}">${result.status}</span></td>
       <td>
         <button class="refresh-button" data-result-id="${result.id}">Refresh URL</button>

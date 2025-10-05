@@ -979,17 +979,15 @@ app.get('/puppeteer-status', requireAuth, async (req, res) => {
 });
 
 // Keep Render service awake by pinging itself every 14 minutes
-if (process.env.RENDER_EXTERNAL_URL) {
-  setInterval(() => {
-    const url = process.env.RENDER_EXTERNAL_URL;
+setInterval(() => {
+  const url = 'https://thequick10scheduler.onrender.com/system-info'; // Replace with your actual Render URL
 
-    https.get(url, (res) => {
-      console.log(`[KEEP-AWAKE] Pinged self. Status code: ${res.statusCode}`);
-    }).on('error', (err) => {
-      console.error('[KEEP-AWAKE] Self-ping error:', err.message);
-    });
-  }, 14 * 60 * 1000); // every 14 minutes
-}
+  https.get(url, (res) => {
+    console.log(`[KEEP-AWAKE] Pinged self. Status code: ${res.statusCode}`);
+  }).on('error', (err) => {
+    console.error('[KEEP-AWAKE] Self-ping error:', err.message);
+  });
+}, 14 * 60 * 1000); // every 14 minutes
 
 const POLLING_INTERVAL = 10000; // 10 seconds
 

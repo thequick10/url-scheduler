@@ -148,7 +148,9 @@ const publicPaths = new Set([
   '/auth/register.html',
   '/api/auth/me',
   '/api/auth/register',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/system-info',
+  '/ping'
 ]);
 
 // Allow bodies
@@ -988,6 +990,15 @@ setInterval(() => {
     console.error('[KEEP-AWAKE] Self-ping error:', err.message);
   });
 }, 10 * 60 * 1000); // every 10 minutes
+
+// Keep-alive endpoint for external cron
+app.get('/ping', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    message: 'Service is alive'
+  });
+});
 
 const POLLING_INTERVAL = 10000; // 10 seconds
 

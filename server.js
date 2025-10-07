@@ -1008,8 +1008,10 @@ async function processJob(job) {
 
   let resolvedCount = 0;
   let totalCount = 0;
+  let failedCount = 0;
 
   try {
+    // Parse file data (your existing code)
     let data = [];
     const fileContent = job.file_content;
 
@@ -1076,45 +1078,79 @@ async function processJob(job) {
     totalCount = data.length;
     console.log(`DIAGNOSTIC: Parsed ${totalCount} rows from the file.`);
 
-    for (const row of data) {
-      const { url, notes, country, uaType } = row;
-      if (!url) continue;
+    // Process in smaller batches to prevent connection timeout
+    const BATCH_SIZE = 5; // Process 5 URLs at a time
+    const DELAY_BETWEEN_BATCHES = 2000; // 2 seconds delay
 
-      try {
-        const result = await resolveWithBrowserAPI(url, country, uaType);
-        if (!result.error) {
-          resolvedCount++;
+    for (let i = 0; i < data.length; i += BATCH_SIZE) {
+      const batch = data.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(data.length/BATCH_SIZE)}`);
+
+      // Process batch with fresh connection handling
+      for (const row of batch) {
+        const { url, notes, country, uaType } = row;
+        if (!url) continue;
+
+        try {
+          // Ensure fresh connection for each URL
+          const result = await resolveWithBrowserAPI(url, country, uaType);
+          
+          if (!result.error) {
+            resolvedCount++;
+          } else {
+            failedCount++;
+          }
+
+          await createScheduledResult({
+            jobId: job.id,
+            originalUrl: url,
+            finalUrl: result.finalUrl,
+            country,
+            uaType,
+            notes,
+            status: result.error ? 'failed' : 'resolved',
+            errorMessage: result.error,
+          });
+
+        } catch (e) {
+          failedCount++;
+          await createScheduledResult({
+            jobId: job.id,
+            originalUrl: url,
+            country,
+            uaType,
+            notes,
+            status: 'failed',
+            errorMessage: e.message,
+          });
         }
-        await createScheduledResult({
-          jobId: job.id,
-          originalUrl: url,
-          finalUrl: result.finalUrl,
-          country,
-          uaType,
-          notes,
-          status: result.error ? 'failed' : 'resolved',
-          errorMessage: result.error,
-        });
-      } catch (e) {
-        await createScheduledResult({
-          jobId: job.id,
-          originalUrl: url,
-          country,
-          uaType,
-          notes,
-          status: 'failed',
-          errorMessage: e.message,
-        });
+      }
+
+      // Delay between batches to prevent overwhelming the system
+      if (i + BATCH_SIZE < data.length) {
+        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
       }
     }
 
-    await updateJobStatus({ jobId: job.id, status: 'completed' });
-    console.log(`Job ${job.id} completed.`);
+    // Update job status based on results
+    let finalStatus;
+    if (resolvedCount === totalCount) {
+      finalStatus = 'completed';
+    } else if (resolvedCount > 0) {
+      finalStatus = 'partially_completed'; // New status for partial success
+    } else {
+      finalStatus = 'failed';
+    }
 
+    await updateJobStatus({ jobId: job.id, status: finalStatus });
+    console.log(`Job ${job.id} completed. Success: ${resolvedCount}, Failed: ${failedCount}, Total: ${totalCount}`);
+    
+    //log schedule job if completed
     try {
       await logActivity(job.user_id, 'SCHEDULE_JOB_COMPLETE', { jobId: job.id, fileName: job.file_name, resolvedUrlCount: resolvedCount, totalUrlCount: totalCount });
     } catch (e) {
-      console.error('Failed to log activity for SCHEDULE_JOB_COMPLETE:', e);
+      console.error(job.user_id, 'SCHEDULE_JOB_FAILED:', e);
+      await logActivity(job.user.id, 'SCHEDULE_JOB_FAILED', {jobId: jobId})
     }
 
   } catch (e) {

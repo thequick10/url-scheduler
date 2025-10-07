@@ -34,33 +34,35 @@ export function getDbPool() {
   return pool;
 }
 
-// Broaden recoverable conditions
+// Optional: Reset pool if connection is lost
 export function handlePoolError(err) {
   if (!err) return;
   const recoverable = new Set([
     'PROTOCOL_CONNECTION_LOST',
     'ECONNRESET',
-    'ETIMEDOUT'
+    'ETIMEDOUT',
+    'ENOTFOUND',
+    'ECONNREFUSED'
   ]);
   if (recoverable.has(err.code)) {
     console.warn('[DB] Connection issue detected, recreating pool...', err.code);
     pool = null;
     getDbPool();
     console.log('[DB] Pool recreated.');
+  } else {
+    console.error('[DB] Non-recoverable error:', err);
   }
 }
 
-// Add connection health check
+//Check Connection Health
 export async function checkConnectionHealth() {
   try {
     const pool = getDbPool();
-    const connection = await pool.getConnection();
-    await connection.ping();
-    connection.release();
-    return true;
-  } catch (err) {
-    console.error('[DB] Health check failed:', err);
-    handlePoolError(err);
+    const [rows] = await pool.query('SELECT 1 as health_check');
+    return rows.length > 0;
+  } catch (error) {
+    console.error('[DB] Health check failed:', error);
+    handlePoolError(error);
     return false;
   }
 }
@@ -128,7 +130,7 @@ export async function ensureSchema() {
       file_name VARCHAR(255) NOT NULL,
       mime_type VARCHAR(100) NOT NULL,
       file_content LONGBLOB NOT NULL,
-      status ENUM('pending', 'processing', 'completed', 'failed') NOT NULL DEFAULT 'pending',
+      status ENUM('pending', 'processing', 'completed', 'failed', 'partially_completed') NOT NULL DEFAULT 'pending',
       scheduled_at DATETIME NOT NULL,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

@@ -107,17 +107,50 @@ export async function updateJobStatus({ jobId, status }) {
  * @param {string} [resultDetails.errorMessage] - Any error message.
  * @returns {Promise<number>} The ID of the newly created result.
  */
+// export async function createScheduledResult({ jobId, originalUrl, finalUrl, country, uaType, notes, status, errorMessage }) {
+//   const pool = getDbPool();
+//   const connection = await pool.getConnection();
+//   try {
+//     const [result] = await connection.query(
+//       'INSERT INTO scheduled_results (job_id, original_url, final_url, country, uaType, notes, status, error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+//       [jobId, originalUrl, finalUrl, country, uaType, notes, status, errorMessage]
+//     );
+//     return result.insertId;
+//   } finally {
+//     connection.release();
+//   }
+// }
+
+//create schedule results with retries mechanism
 export async function createScheduledResult({ jobId, originalUrl, finalUrl, country, uaType, notes, status, errorMessage }) {
-  const pool = getDbPool();
-  const connection = await pool.getConnection();
-  try {
-    const [result] = await connection.query(
-      'INSERT INTO scheduled_results (job_id, original_url, final_url, country, uaType, notes, status, error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [jobId, originalUrl, finalUrl, country, uaType, notes, status, errorMessage]
-    );
-    return result.insertId;
-  } finally {
-    connection.release();
+  const maxRetries = 3;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const pool = getDbPool();
+      const connection = await pool.getConnection();
+      
+      try {
+        const [result] = await connection.query(
+          'INSERT INTO scheduled_results (job_id, original_url, final_url, country, uaType, notes, status, error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [jobId, originalUrl, finalUrl, country, uaType, notes, status, errorMessage]
+        );
+        return result.insertId;
+      } finally {
+        connection.release();
+      }
+    } catch (err) {
+      console.error(`[createScheduledResult] Attempt ${attempt} failed:`, err?.code || err?.message);
+      
+      if (attempt < maxRetries && ['PROTOCOL_CONNECTION_LOST', 'ECONNRESET', 'ETIMEDOUT'].includes(err?.code)) {
+        handlePoolError(err);
+        const delayMs = attempt * 1000; // Exponential backoff
+        await new Promise(r => setTimeout(r, delayMs));
+        continue;
+      }
+      
+      throw err; // Re-throw if max retries reached or non-recoverable error
+    }
   }
 }
 

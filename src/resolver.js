@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer-core';
 
-function getRegionZoneMap() {
+export function getRegionZoneMap() {
   return {
     US: process.env.BRIGHTDATA_US_PROXY,
     CA: process.env.BRIGHTDATA_CA_PROXY,
@@ -82,7 +82,7 @@ const userAgents = {
   ]
 };
 
-function getBrowserWss(regionCode) {
+export function getBrowserWss(regionCode) {
   const regionZoneMap = getRegionZoneMap();
   const zone = regionZoneMap[regionCode?.toUpperCase()];
   const password = process.env.BRIGHTDATA_PASSWORD;

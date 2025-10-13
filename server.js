@@ -2,7 +2,8 @@ import { config as dotenv } from "dotenv";
 dotenv();
 
 import express from "express";
-import { resolveWithBrowserAPI } from './src/resolver.js';
+// import { resolveWithBrowserAPI } from './src/resolver.js';
+import { resolveWithBrowserAPI, getBrowserWss, getRegionZoneMap } from './src/resolver.js';
 import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
@@ -547,7 +548,7 @@ function getDatesBetween(startDate, endDate) {
 
 // Regions check
 app.get("/regions", (req, res) => {
-  res.json(Object.keys(regionZoneMap));
+  res.json(Object.keys(getRegionZoneMap));
 });
 
 app.get("/system-info", (req, res) => {
@@ -1150,7 +1151,7 @@ async function processJob(job) {
       await logActivity(job.user_id, 'SCHEDULE_JOB_COMPLETE', { jobId: job.id, fileName: job.file_name, resolvedUrlCount: resolvedCount, totalUrlCount: totalCount });
     } catch (e) {
       console.error(job.user_id, 'SCHEDULE_JOB_FAILED:', e);
-      await logActivity(job.user.id, 'SCHEDULE_JOB_FAILED', {jobId: jobId})
+      await logActivity(job.user.id, 'SCHEDULE_JOB_FAILED', {jobId: job.Id})
     }
 
   } catch (e) {

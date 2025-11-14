@@ -42,7 +42,10 @@ export function handlePoolError(err) {
     'ECONNRESET',
     'ETIMEDOUT',
     'ENOTFOUND',
-    'ECONNREFUSED'
+    'ECONNREFUSED',
+    'ER_SERVER_SHUTDOWN',
+    'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR',
+    'PROTOCOL_ENQUEUE_HANDSHAKE_TWICE',
   ]);
   if (recoverable.has(err.code)) {
     console.warn('[DB] Connection issue detected, recreating pool...', err.code);

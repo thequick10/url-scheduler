@@ -638,7 +638,7 @@ function renderTable() {
           <td>${c.uaType === 'mobile' ? '📱 Mobile' : (c.uaType === 'desktop' ? '🖥️ Desktop' : '🔄 Rotating')}</td>
           <td>
             <button class="btn-danger" onclick="confirmDelete(${c.id})">🗑️ Delete</button>
-            <button class="copy-btn" onclick="copyToClipboard('${c.finalUrl}')" title="Copy URL">📋 Copy</button>
+            <button class="copy-btn" onclick="copyToClipboard('${c.finalUrl}')">📋 Copy</button>
           </td>
         `;
     tbody.appendChild(row);
@@ -791,34 +791,53 @@ document.getElementById("deleteBtn").addEventListener("click", () => {
 });
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => {
-    // Create a beautiful notification
-    const notification = document.createElement("div");
-    notification.style.cssText = `
-          position: fixed;
-          top: 20px;
-          right: 40%;
-          --background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          background:rgba(99, 102, 241, 0.25);
-          color: white;
-          padding: 15px 25px;
-          border-radius: 12px;
-          box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
-          z-index: 1000;
-          font-weight: 600;
-          max-width: 300px;
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          animation: fadeInUp 0.3s ease-out;
-        `;
-    notification.textContent = "✅ Copied to clipboard!";
-    document.body.appendChild(notification);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+      // Create a beautiful notification
+      const notification = document.createElement("div");
+      notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 40%;
+            --background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            background:rgba(99, 102, 241, 0.25);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+            z-index: 1000;
+            font-weight: 600;
+            max-width: 300px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fadeInUp 0.3s ease-out;
+          `;
+      notification.textContent = "✅ Copied to clipboard!";
+      document.body.appendChild(notification);
+  
+      setTimeout(() => {
+        notification.remove();
+      }, 3000);
+    });
+  } else {
+  // Fallback for insecure origins
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";  // Prevent scrolling to bottom
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
 
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
-  });
+  try {
+    document.execCommand('copy');
+    console.log('Fallback: Copying successful');
+    alert('Url Copied');
+  } catch (err) {
+    console.error('Fallback: Copy failed', err);
+  }
+    document.body.removeChild(textarea);
+  }
 }
 
 function exportCSV() {

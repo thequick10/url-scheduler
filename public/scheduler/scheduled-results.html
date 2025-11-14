@@ -70,7 +70,14 @@
           <option value="xlsx">XLSX</option>
         </select>
         <button class="btn-secondary" id="exportButton">📊 Export</button>
-        <button id="deleteAllButton" class="btn-danger">🗑️ Delete All</button>
+	<!-- <button id="deleteAllButton" class="btn-danger">🗑️ Delete All</button> -->
+        <button id="hideAllButton" class="btn-danger">🗑️ Hide All</button>
+        <button id="showAllButton" class="btn-secondary" style="margin-left: 10px;">👁️ Show All</button>
+      </div>
+      <div class="page-size-controls">
+        <label for="pageSizeInput">Rows per page:</label>
+        <input id="pageSizeInput" type="number" min="1" placeholder="Rows per page" style="width: 140px;" value="10"/>
+        <span class="muted" id="count"></span>
       </div>
 
       <table id="resultsTable">
@@ -99,6 +106,13 @@
           </tr>
         </tfoot>
       </table>
+      <div class="pagination-controls">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 50px; margin: 16px 0;">
+          <button id="prevPage" class="page-buttons">⬅ Prev</button>
+          <span class="page-number" id="pageInfo">Page 1</span>
+          <button id="nextPage" class="apply-button">Next ➡</button>
+        </div>
+      </div>
     </div>
   </div>
   <script src="../components/page-loader/loader.js"></script>

@@ -125,7 +125,8 @@
                 <tr>
                   <th>Date</th>
                   <th>Requests</th>
-                  <th>Bandwidth</th>
+                  <th>Total Bandwidth</th>
+		              <th>Bandwidth Per Req</th>
                   <th>Day of Week</th>
                   <th>Change</th>
                 </tr>
@@ -177,6 +178,7 @@
     let filteredData = {};
     let currentSort = 'newest';
     let summaryData = {};
+    let bandwidthPerRequest = {};
 
     // DOM Elements
     const fromInput = document.getElementById('from');
@@ -290,6 +292,7 @@
           // Extract data and summary from response
           currentData = responseData.data || {};
           summaryData = responseData.summary || {};
+	        bandwidthPerRequest = responseData.data || {};
           filteredData = { ...currentData };
           
           updateDisplay();
@@ -415,6 +418,7 @@
         const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
         const requests = data.requests || 0;
         const bandwidth = data.bandwidth || 0;
+	      const bandwidthPerRequest = data.bandwidthPerRequest || 0;
         
         let growth = '—';
         if (index > 0) {
@@ -435,6 +439,7 @@
             <td>${date}</td>
             <td class="request-count">${requests.toLocaleString()}</td>
             <td class="bandwidth-count">${formatBytes(bandwidth)}</td>
+	    <td class="bandwidthper-request">${formatBytes(bandwidthPerRequest)}</td>
             <td>${dayOfWeek}</td>
             <td>${growth}</td>
           </tr>`;
@@ -451,6 +456,8 @@
         Requests: data.requests || 0,
         'Bandwidth (Bytes)': data.bandwidth || 0,
         'Bandwidth (Formatted)': formatBytes(data.bandwidth || 0),
+        'Bandwidth Per Request (Bytes)': data.bandwidthPerRequest || 0,
+        'Bandwidth Per Request (Formatted)': formatBytes(data.bandwidthPerRequest || 0),
         'Day of Week': new Date(date).toLocaleDateString('en-US', { weekday: 'long' })
       }));
 

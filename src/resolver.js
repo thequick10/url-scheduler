@@ -49,7 +49,10 @@ export function getRegionZoneMap() {
     CL: process.env.BRIGHTDATA_CL_PROXY,
     SA: process.env.BRIGHTDATA_SA_PROXY,
     FI: process.env.BRIGHTDATA_FI_PROXY,
-    LI: process.env.BRIGHTDATA_LI_PROXY
+    LI: process.env.BRIGHTDATA_LI_PROXY,
+    KW: process.env.BRIGHTDATA_KW_PROXY,
+    EE: process.env.BRIGHTDATA_EE_PROXY,
+    HU: process.env.BRIGHTDATA_HU_PROXY
   };
 }
 
@@ -112,30 +115,36 @@ export async function resolveWithBrowserAPI(inputUrl, region = "US", uaType) {
     const page = await browser.newPage();
     
     await page.setRequestInterception(true);
+
     page.on('request', (req) => {
+      const blockedTrackingUrls = ["googletagmanager.com/gtm.js", "cdn.adapex.io/hb", "pagead2.googlesyndication.com/", "js.hotjar.io/", "analytics.google.com/", "doubleclick.net/", "facebook.net/", "adservice.google.com/", "tiktok.com/tracker", "scorecardresearch.com/"];
       const blockedResources = ["image", "stylesheet", "font", "media", "other"];
-      if (blockedResources.includes(req.resourceType())) {
-        req.abort();
+      if (blockedResources.includes(req.resourceType()) || blockedTrackingUrls.some(url => req.url().includes(url))) {
+        req.abort().catch(err => console.error(`[ERROR] Failed to abort request: ${err.message}`));
       } else {
-        req.continue();
+        req.continue().catch(err => console.error(`[ERROR] Failed to continue request: ${err.message}`));
       }
     });
-    console.log(`[INFO] Resolving URL: [${inputUrl}] with region: [${region}]`);
+
+    //console.log(`[INFO] Resolving URL: [${inputUrl}] with region: [${region}]`);
+    
     const { userAgent, isMobile } = getRandomUserAgent(uaType);
-    console.log(`[INFO] Using ${isMobile ? 'Mobile' : 'Desktop'} User-Agent:\n${userAgent}`);
+    
+    //console.log(`[INFO] Using ${isMobile ? 'Mobile' : 'Desktop'} User-Agent:\n${userAgent}`);
+    
     await page.setUserAgent(userAgent);
 
     if (isMobile) {
       await page.setViewport({
         width: 375 + Math.floor(Math.random() * 20) - 10,
-        height: 812 + Math.floor(Math.random() * 20) - 10,
+        height: 667 + Math.floor(Math.random() * 20) - 10,
         isMobile: true,
         hasTouch: true,
         deviceScaleFactor: 2,
       });
     } else {
       await page.setViewport({
-        width: 1366 + Math.floor(Math.random() * 20) - 10,
+        width: 1024 + Math.floor(Math.random() * 20) - 10,
         height: 768 + Math.floor(Math.random() * 20) - 10,
         isMobile: false,
       });
@@ -158,12 +167,12 @@ export async function resolveWithBrowserAPI(inputUrl, region = "US", uaType) {
     }
 
     try {
-      await page.goto(inputUrl, { waitUntil: "domcontentloaded", timeout: timeout });
+      await page.goto(inputUrl, { waitUntil: "domcontentloaded" });
     } catch (err) {
       console.error(`[ERROR] Failed to navigate to ${inputUrl}:`, err.message);
     }
 
-    await page.waitForSelector("body", {timeout: 120000});
+    await page.waitForSelector("body", {timeout: 30000});
 
     const finalUrl = page.url();
 
@@ -176,19 +185,12 @@ export async function resolveWithBrowserAPI(inputUrl, region = "US", uaType) {
       }
     });
 
-    console.log(`[INFO] Final URL: [${finalUrl}]`);
-
-    console.log(`→ URLs Resolved with [${region}] Check IP Data ⤵`);
-    if (ipData?.ip) {
-        console.log(`🌍 IP Info : ${ipData.ip} (${ipData.country || "Unknown Country"} - ${ipData.region || "Unknown Region"} - ${ipData.country_code || "Unknown country_code"})`);
-        console.log(`🔍 Region Match: ${ipData.country_code?.toUpperCase() === region.toUpperCase() ? '✅ REGION MATCHED' : '❌ REGION MISMATCH'}`);
-    }
-
     return { finalUrl, ipData };
   } catch(err){
     console.log(`[ERROR] ${err.message}`);
     return {error: err.message};
   } finally {
-    await browser.disconnect();
+    await browser.close();
+    //console.log('Browser has been closed');
   }
 }

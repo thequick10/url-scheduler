@@ -67,6 +67,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // New validation: Check if scheduledAt is in the past (compared in IST)
+    const selectedDate = new Date(scheduledAt);
+    const now = new Date();
+    const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const selectedIST = new Date(selectedDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    
+    if (selectedIST <= nowIST) {
+      // Show the popup
+      document.getElementById('pastDateModal').style.display = 'flex';
+      return; // Prevent form submission
+    }
+
     const formData = new FormData();
     formData.append('scheduleFile', file);
     formData.append('scheduledAt', new Date(scheduledAt).toISOString());
@@ -89,6 +101,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('Error scheduling job:', error);
       alert(`Error: ${error.message}`);
     }
+  });
+
+  // Add event listener for closing the modal
+  document.getElementById('closeModalBtn').addEventListener('click', () => {
+    document.getElementById('pastDateModal').style.display = 'none';
+  });
+
+  // refresh tab after clicking schedule again button on popup
+  document.getElementById('closeModalBtn').addEventListener('click', ()=>{
+    window.location.reload();
   });
 
   // Event delegation for delete buttons

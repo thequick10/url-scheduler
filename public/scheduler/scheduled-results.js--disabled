@@ -1,8 +1,6 @@
 let results = [];
 let userRole = '';
 let fp; // flatpickr instance
-let hiddenResults = JSON.parse(localStorage.getItem('hiddenResults') || '[]');
-let showAll = false; // Flag for showing all
 
 // Function to convert UTC to IST
 function toIST(dateString) {
@@ -34,15 +32,7 @@ async function loadResults() {
 
 function renderTable() {
   const tableBody = document.getElementById('tableBody');
-  let filteredResults = [...results];
-  
-  // Filter hidden if not showAll
-  if (!showAll) {
-    filteredResults = filteredResults.filter(r => !hiddenResults.includes(r.id));
-  }
-  
-  // Apply other filters (search, date, sort)
-  filteredResults = filterAndSortResults(filteredResults);
+  const filteredResults = filterAndSortResults();
 
   if (!Array.isArray(filteredResults) || filteredResults.length === 0) {
     const colspan = (userRole === 'Admin') ? 9 : 8;
@@ -129,7 +119,6 @@ function renderTable() {
       </td>
     </tr>
   `).join('');
-
   // Update pager UI
   const pageInfo = document.getElementById('pageInfo');
   if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
@@ -139,11 +128,11 @@ function renderTable() {
   if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 }
 
-function filterAndSortResults(filteredResults) {
+function filterAndSortResults() {
   const searchInput = document.getElementById('searchInput');
   const sortSelect = document.getElementById('sortDate');
 
-  let filtered = [...filteredResults]; // Use the passed filteredResults
+  let filtered = [...results];
   const selectedDates = fp.selectedDates;
 
   // Date range filter
@@ -236,7 +225,7 @@ async function resolveFinalUrl(inputUrl, region = "US", uaType = "random") {
 }
 
 function exportCSV() {
-  const filteredResults = filterAndSortResults(showAll ? results : results.filter(r => !hiddenResults.includes(r.id))); // Use filtered and sorted data
+  const filteredResults = filterAndSortResults(); // Use filtered and sorted data
 
   const headers = ["Resolved At (IST)", "Original URL", "Final URL", "Country", "Notes", "UA Type", "Status"];
   if (userRole === 'Admin') {
@@ -278,7 +267,7 @@ function exportCSV() {
 }
 
 function exportXLSX() {
-  const filteredResults = filterAndSortResults(showAll ? results : results.filter(r => !hiddenResults.includes(r.id))); // Use filtered and sorted data
+  const filteredResults = filterAndSortResults(); // Use filtered and sorted data
 
   const dataForSheet = filteredResults.map(r => {
     const row = {};
@@ -339,9 +328,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Could not fetch user role', e);
   }
 
-  // Hide All Event Listener
-  const hideAllButton = document.getElementById('hideAllButton');
-  hideAllButton.addEventListener('click', hideAllResults);
+  // Delete Eventlistner
+  const deleteAllButton = document.getElementById('deleteAllButton');
+  deleteAllButton.addEventListener('click', deleteAllResults);
 
   // Event Listeners
   searchInput.addEventListener('keyup', renderTable);
@@ -354,7 +343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     mode: "range",
     dateFormat: "Y-m-d",
     onChange: function(selectedDates) {
-      currentPage = 1;
+      currentChange = 1;
       renderTable();
     }
   });
@@ -383,18 +372,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  async function hideAllResults() {
-    const confirmed = confirm("Are you sure you want to hide ALL visible scheduled results? (They can be shown again with 'Show All')");
+  async function deleteAllResults() {
+    const confirmed = confirm("Are you sure you want to delete ALL scheduled results? This action cannot be undone.");
     if (!confirmed) return;
   
-    const visibleResults = showAll ? results : results.filter(r => !hiddenResults.includes(r.id));
-    visibleResults.forEach(r => {
-      if (!hiddenResults.includes(r.id)) hiddenResults.push(r.id);
-    });
-    localStorage.setItem('hiddenResults', JSON.stringify(hiddenResults));
-    
-    showAll = false; // Reset to hide mode after hiding
-    renderTable();
+    try {
+      const response = await fetch('/api/scheduled-results/all', {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json'
+        },
+        cache: 'no-store'
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to delete all scheduled results');
+      }
+  
+      const result = await response.json();
+      alert(result.message || 'All results deleted.');
+  
+      results = [];
+      renderTable();
+    } catch (error) {
+      console.error('Error deleting all results:', error);
+      alert('Error deleting all results.');
+    }
   }  
 
   // Initial load
@@ -455,19 +458,10 @@ function fallbackCopy(text) {
   finally { document.body.removeChild(ta); }
 }
 
-// Pagination functionality
+//pagination functionality
 const prevBtn = document.getElementById('prevPage');
 if (prevBtn) prevBtn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTable(); } });
 const nextBtn = document.getElementById('nextPage');
 if (nextBtn) nextBtn.addEventListener('click', () => { currentPage++; renderTable(); });
 const psi = document.getElementById('pageSizeInput');
 if (psi) psi.addEventListener('change', () => { currentPage = 1; renderTable(); });
-
-// Show All Button Listener (outside DOMContentLoaded for global scope)
-const showAllButton = document.getElementById('showAllButton');
-if (showAllButton) {
-  showAllButton.addEventListener('click', () => {
-    showAll = true;
-    renderTable();
-  });
-}

@@ -57,7 +57,10 @@ export async function getPendingJobs() {
       const transient = new Set([
         'PROTOCOL_CONNECTION_LOST',
         'ECONNRESET',
-        'ETIMEDOUT'
+        'ETIMEDOUT',
+	      'ER_SERVER_SHUTDOWN',
+        'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR',
+        'PROTOCOL_ENQUEUE_HANDSHAKE_TWICE',
       ]);
       if (transient.has(err?.code) && attempt < maxRetries) {
         handlePoolError(err);

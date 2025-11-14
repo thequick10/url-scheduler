@@ -2,6 +2,7 @@ import { config as dotenv } from "dotenv";
 dotenv();
 
 import express from "express";
+// import { resolveWithBrowserAPI } from './src/resolver.js';
 import { resolveWithBrowserAPI, getBrowserWss, getRegionZoneMap } from './src/resolver.js';
 import path from "path";
 import { fileURLToPath } from "url";
@@ -82,11 +83,11 @@ setInterval(async () => {
   try {
     const pool = getDbPool();
     await pool.query('SELECT 1');
-    // console.log('[DB] Keep-alive ping sent.');
+    console.log('[DB] Keep-alive ping sent.');
   } catch (e) {
     console.error('[DB] Keep-alive ping failed:', e);
   }
-}, 10 * 60 * 1000); // every 10 minutes
+}, 5 * 60 * 1000); // every 14 minutes
 
 const pool = getDbPool(); // Get the pool
 const MySQLStore = MySQLStoreFactory(session);
@@ -150,8 +151,7 @@ const publicPaths = new Set([
   '/api/auth/register',
   '/favicon.ico',
   '/system-info',
-  '/ping',
-  '/puppeteer-status'
+  '/ping'
 ]);
 
 // Allow bodies
@@ -208,7 +208,7 @@ app.get('/signup', (req, res) => {
 
 // Enhanced middleware stack
 app.use(helmet({
-  contentSecurityPolicy: true, // Enable and customize as needed
+  contentSecurityPolicy: false, // Enable and customize as needed
   referrerPolicy : {
     policy: "no-referrer",
   },
@@ -226,18 +226,8 @@ if (!allowedOrigins) {
 console.log('[CORS] Allowed origins:', allowedOrigins);
 
 app.use(cors({
-    origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      console.warn('[CORS] Blocked origin:', origin);
-      return callback(new Error('Not allowed by CORS'));
-    }
-  }, 
-  credentials: true,
+  origin: '*', 
+  credentials: false
 }));
 
 // Serve static frontend
@@ -318,9 +308,9 @@ app.get("/resolve", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Invalid URL format" });
   }
 
-  //console.log(`⌛ Requested new URL: ${inputUrl}`);
+  console.log(`⌛ Requested new URL: ${inputUrl}`);
   // console.log(`🌐 Resolving URL for region [${region}]:`, inputUrl);
-  //console.log(`🌐 Resolving URL for region [${region}] with uaType [${uaType}]:`, inputUrl);
+  console.log(`🌐 Resolving URL for region [${region}] with uaType [${uaType}]:`, inputUrl);
 
   try {
     const startTime = Date.now();
@@ -368,12 +358,16 @@ app.get("/resolve", requireAuth, async (req, res) => {
       console.warn('[Timing Stat] Failed to append timing stat:', e.message);
     }
     
+    console.log(`URL Resolution Completed For: ${inputUrl}`);
+    console.log(`→ Original URL: ${inputUrl}`);
+    
     if(finalUrl){
       console.log(`→ Final URL   : ${finalUrl}`);
     } else {
       console.log(`⚠️ Final URL could not be resolved.`);
     }
 
+    console.log(`→ URLs Resolved with [${region}] Check IP Data ⤵`);
     if (ipData?.ip) {
         console.log(`🌍 IP Info : ${ipData.ip} (${ipData.country || "Unknown Country"} - ${ipData.region || "Unknown Region"} - ${ipData.country_code || "Unknown country_code"})`);
         console.log(`🔍 Region Match: ${ipData.country_code?.toUpperCase() === region.toUpperCase() ? '✅ REGION MATCHED' : '❌ REGION MISMATCH'}`);
@@ -496,8 +490,7 @@ app.get('/zone-usage', (req, res) => {
           dates.forEach((date, index) => {
             result[date] = {
               requests: reqs_browser_api[index] || 0,
-              bandwidth: bw_browser_api[index] || 0, // in bytes
-              bandwidthPerRequest: reqs_browser_api[index] ? bw_browser_api[index] / reqs_browser_api[index] : 0
+              bandwidth: bw_browser_api[index] || 0 // in bytes
             };
           });
         }
@@ -555,8 +548,7 @@ function getDatesBetween(startDate, endDate) {
 
 // Regions check
 app.get("/regions", (req, res) => {
-  const map = getRegionZoneMap();
-  res.json(Object.keys(map));
+  res.json(Object.keys(getRegionZoneMap));
 });
 
 app.get("/system-info", (req, res) => {
@@ -977,7 +969,7 @@ app.get('/ip', requireAuth, (req, res) => {
   res.send({ ip : clientIp });
 });
 
-app.get('/puppeteer-status', async (req, res) => {
+app.get('/puppeteer-status', requireAuth, async (req, res) => {
   try {
     const browser = await puppeteer.connect({ browserWSEndpoint: getBrowserWss("US") });
     const page = await browser.newPage();
@@ -988,6 +980,17 @@ app.get('/puppeteer-status', async (req, res) => {
     res.status(500).json({ status: "error", message: err.message });
   }
 });
+
+// Keep Render service awake by pinging itself every 10 minutes
+setInterval(() => {
+  const url = 'https://thequick10scheduler.onrender.com/system-info'; // Replace with your actual Render URL
+
+  https.get(url, (res) => {
+    console.log(`[KEEP-AWAKE] Pinged self. Status code: ${res.statusCode}`);
+  }).on('error', (err) => {
+    console.error('[KEEP-AWAKE] Self-ping error:', err.message);
+  });
+}, 10 * 60 * 1000); // every 10 minutes
 
 // Keep-alive endpoint for external cron
 app.get('/ping', (req, res) => {
@@ -1077,8 +1080,8 @@ async function processJob(job) {
     console.log(`DIAGNOSTIC: Parsed ${totalCount} rows from the file.`);
 
     // Process in smaller batches to prevent connection timeout
-    const BATCH_SIZE = 2; // Process 2 URLs at a time
-    const DELAY_BETWEEN_BATCHES = 1200; // 1.2 seconds delay
+    const BATCH_SIZE = 5; // Process 5 URLs at a time
+    const DELAY_BETWEEN_BATCHES = 2000; // 2 seconds delay
 
     for (let i = 0; i < data.length; i += BATCH_SIZE) {
       const batch = data.slice(i, i + BATCH_SIZE);
@@ -1148,7 +1151,7 @@ async function processJob(job) {
       await logActivity(job.user_id, 'SCHEDULE_JOB_COMPLETE', { jobId: job.id, fileName: job.file_name, resolvedUrlCount: resolvedCount, totalUrlCount: totalCount });
     } catch (e) {
       console.error(job.user_id, 'SCHEDULE_JOB_FAILED:', e);
-      await logActivity(job.user.id, 'SCHEDULE_JOB_FAILED', {jobId: job.id})
+      await logActivity(job.user.id, 'SCHEDULE_JOB_FAILED', {jobId: job.Id})
     }
 
   } catch (e) {
@@ -1184,7 +1187,7 @@ async function startWorker(handlePoolError) {
 }
 
 app.listen(PORT, () => {
-  console.log(`🚀 Region-aware resolver running at http://165.232.179.108:${PORT}`);
+  console.log(`🚀 Region-aware resolver running at http://localhost:${PORT}`);
   // startWorker();
   startWorker(handlePoolError);
 });

@@ -686,10 +686,7 @@ app.post('/login', async (req, res) => {
     const userAgent = req.headers['user-agent'] || 'Unknown';
     const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || req.ip || 'Unknown';
 
-    try { 
-      await logActivity(user.id, 'LOGIN', {username: user.username, message: 'LoggedIn Successfully', userAgent: userAgent, ip: ip}); 
-    } catch {}
-    //try { await logActivity(user.id, 'LOGIN', `${user.username}, LoggedIn Successfully`); } catch {}
+    try { await logActivity(user.id, 'LOGIN', `${user.username}, LoggedIn Successfully, ${userAgent} and ${ip}`); } catch {}
     
     return req.session.save((err) => {
       if (err) return res.redirect('/auth/error.html');
@@ -720,7 +717,7 @@ app.get('/api/auth/me', (req, res) => {
 
 // Logout route
 app.get('/logout', requireAuth, async (req, res) => {
-  try { await logActivity(req.session.user.id, 'LOGOUT', "User logged out"); } catch {}
+  try { await logActivity(req.session.user.id, 'LOGOUT', `${req.session.user.name} just logged out`); } catch {}
   req.session.destroy(() => {
     res.redirect('/login');
   });

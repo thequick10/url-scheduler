@@ -681,7 +681,16 @@ app.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.redirect('/auth/error.html');
     req.session.user = { id: user.id, name: user.name, username: user.username, email: user.email, role: user.role };
-    try { await logActivity(user.id, 'LOGIN', `${user.username}, LoggedIn Successfully`); } catch {}
+
+    // Capture user agent and IP
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || req.ip || 'Unknown';
+
+    try { 
+      await logActivity(user.id, 'LOGIN', {username: user.username, message: 'LoggedIn Successfully', userAgent: userAgent, ip: ip}); 
+    } catch {}
+    //try { await logActivity(user.id, 'LOGIN', `${user.username}, LoggedIn Successfully`); } catch {}
+    
     return req.session.save((err) => {
       if (err) return res.redirect('/auth/error.html');
       return res.redirect('/index.html');
